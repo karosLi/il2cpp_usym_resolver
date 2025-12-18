@@ -32,7 +32,7 @@ public class UsymReader : IDisposable
 
         try
         {
-            _mappedFile = MemoryMappedFile.CreateFromFile(filePath, FileMode.Open, "usym", 0, MemoryMappedFileAccess.Read);
+            _mappedFile = MemoryMappedFile.CreateFromFile(filePath, FileMode.Open, null, 0, MemoryMappedFileAccess.Read);
             var accessor = _mappedFile.CreateViewAccessor(0, 0, MemoryMappedFileAccess.Read);
             
             // 读取文件头

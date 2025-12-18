@@ -1,0 +1,351 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Il2CppSymbolReader</name>
+    </assembly>
+    <members>
+        <member name="T:Il2CppSymbolReader.CommandLineInterface">
+            <summary>
+            命令行接口，提供所有符号解析功能
+            </summary>
+        </member>
+        <member name="M:Il2CppSymbolReader.CommandLineInterface.Execute(System.String[])">
+            <summary>
+            命令行处理入口点
+            </summary>
+            <param name="args">命令行参数</param>
+            <returns>退出代码</returns>
+        </member>
+        <member name="T:Il2CppSymbolReader.Il2CppAddressResolver">
+            <summary>
+            IL2CPP地址解析器，用于解析从堆栈跟踪获取的C++地址
+            </summary>
+        </member>
+        <member name="M:Il2CppSymbolReader.Il2CppAddressResolver.#ctor(System.String,System.UInt64)">
+            <summary>
+            构造函数
+            </summary>
+            <param name="symbolFilePath">符号文件路径</param>
+            <param name="imageBase">镜像基地址，如果未知可以设为0</param>
+        </member>
+        <member name="M:Il2CppSymbolReader.Il2CppAddressResolver.ResolveAddress(System.String)">
+            <summary>
+            解析地址字符串（只接受十六进制格式）
+            </summary>
+            <param name="addressString">十六进制地址字符串（可带或不带0x前缀）</param>
+            <returns>解析结果</returns>
+        </member>
+        <member name="M:Il2CppSymbolReader.Il2CppAddressResolver.ResolveAddress(System.UInt64)">
+            <summary>
+            解析内存地址
+            </summary>
+            <param name="address">内存地址</param>
+            <returns>解析结果</returns>
+        </member>
+        <member name="M:Il2CppSymbolReader.Il2CppAddressResolver.ResolveAddresses(System.Collections.Generic.IEnumerable{System.String})">
+            <summary>
+            批量解析地址
+            </summary>
+            <param name="addresses">地址列表</param>
+            <returns>解析结果列表</returns>
+        </member>
+        <member name="M:Il2CppSymbolReader.Il2CppAddressResolver.ExportToJson(System.Collections.Generic.IEnumerable{Il2CppSymbolReader.AddressResolutionResult})">
+            <summary>
+            将解析结果导出为JSON格式
+            </summary>
+            <param name="results">解析结果</param>
+            <returns>JSON字符串</returns>
+        </member>
+        <member name="M:Il2CppSymbolReader.Il2CppAddressResolver.FormatStackTrace(Il2CppSymbolReader.AddressResolutionResult)">
+            <summary>
+            创建可读的堆栈跟踪文本
+            </summary>
+            <param name="result">解析结果</param>
+            <returns>格式化的堆栈跟踪</returns>
+        </member>
+        <member name="M:Il2CppSymbolReader.Il2CppAddressResolver.TryParseHexAddress(System.String,System.UInt64@)">
+            <summary>
+            尝试解析十六进制地址字符串
+            </summary>
+            <param name="addressStr">地址字符串</param>
+            <param name="address">解析出的地址</param>
+            <returns>是否解析成功</returns>
+        </member>
+        <member name="T:Il2CppSymbolReader.AddressResolutionResult">
+            <summary>
+            地址解析结果
+            </summary>
+        </member>
+        <member name="P:Il2CppSymbolReader.AddressResolutionResult.OriginalAddress">
+            <summary>
+            原始地址
+            </summary>
+        </member>
+        <member name="P:Il2CppSymbolReader.AddressResolutionResult.RelativeAddress">
+            <summary>
+            相对地址（减去镜像基地址后）
+            </summary>
+        </member>
+        <member name="P:Il2CppSymbolReader.AddressResolutionResult.PrimarySymbol">
+            <summary>
+            主要符号信息
+            </summary>
+        </member>
+        <member name="P:Il2CppSymbolReader.AddressResolutionResult.AllFrames">
+            <summary>
+            所有堆栈帧（包括内联函数）
+            </summary>
+        </member>
+        <member name="P:Il2CppSymbolReader.AddressResolutionResult.ImageBase">
+            <summary>
+            镜像基地址
+            </summary>
+        </member>
+        <member name="T:Il2CppSymbolReader.MemoryMappedFile">
+            <summary>
+            跨平台内存映射文件实现（包装.NET标准库）
+            </summary>
+        </member>
+        <member name="M:Il2CppSymbolReader.MemoryMappedFile.CreateFromFile(System.String,System.IO.FileMode,System.String,System.Int64,Il2CppSymbolReader.MemoryMappedFileAccess)">
+            <summary>
+            从文件创建内存映射文件
+            </summary>
+        </member>
+        <member name="M:Il2CppSymbolReader.MemoryMappedFile.CreateViewAccessor(System.Int64,System.Int64,Il2CppSymbolReader.MemoryMappedFileAccess)">
+            <summary>
+            创建视图访问器
+            </summary>
+        </member>
+        <member name="T:Il2CppSymbolReader.MemoryMappedFileAccess">
+            <summary>
+            内存映射文件访问模式
+            </summary>
+        </member>
+        <member name="T:Il2CppSymbolReader.MemoryMappedViewAccessor">
+            <summary>
+            内存映射视图访问器（包装.NET标准库）
+            </summary>
+        </member>
+        <member name="T:Il2CppSymbolReader.UnityStackTraceParser">
+            <summary>
+            Unity IL2CPP 堆栈跟踪解析器
+            解析类似以下格式的堆栈跟踪：
+            KF.ProtoBufRuntimeTypeModelLogicLayer.Init () (at 0x42299e6:0)
+            KF.BaseDataConfigManager.InitData () (at 0x3ede55a:0)
+            </summary>
+        </member>
+        <member name="T:Il2CppSymbolReader.UnityStackTraceParser.StackTraceEntry">
+            <summary>
+            堆栈跟踪条目
+            </summary>
+        </member>
+        <member name="T:Il2CppSymbolReader.UnityStackTraceParser.ParseResult">
+            <summary>
+            解析结果
+            </summary>
+        </member>
+        <member name="M:Il2CppSymbolReader.UnityStackTraceParser.Parse(System.String)">
+            <summary>
+            解析 Unity 堆栈跟踪文本
+            </summary>
+            <param name="stackTrace">堆栈跟踪文本</param>
+            <returns>解析结果</returns>
+        </member>
+        <member name="M:Il2CppSymbolReader.UnityStackTraceParser.ExtractAddresses(System.String)">
+            <summary>
+            从文本中提取所有地址
+            </summary>
+            <param name="text">包含地址的文本</param>
+            <returns>地址列表</returns>
+        </member>
+        <member name="M:Il2CppSymbolReader.UnityStackTraceParser.ContainsUnityStackTrace(System.String)">
+            <summary>
+            检查文本是否包含 Unity 堆栈跟踪格式
+            </summary>
+            <param name="text">文本内容</param>
+            <returns>是否包含 Unity 堆栈跟踪</returns>
+        </member>
+        <member name="M:Il2CppSymbolReader.UnityStackTraceParser.IsValidStackTraceLine(System.String)">
+            <summary>
+            验证单行是否为有效的 Unity 堆栈跟踪格式
+            </summary>
+            <param name="line">单行文本</param>
+            <returns>是否有效</returns>
+        </member>
+        <member name="T:Il2CppSymbolReader.UnityStackTraceResolver">
+            <summary>
+            Unity 堆栈跟踪解析和解析结果
+            </summary>
+        </member>
+        <member name="M:Il2CppSymbolReader.UnityStackTraceResolver.ResolveStackTrace(System.String)">
+            <summary>
+            解析并解析 Unity 堆栈跟踪
+            </summary>
+            <param name="stackTraceText">堆栈跟踪文本</param>
+            <returns>解析结果</returns>
+        </member>
+        <member name="T:Il2CppSymbolReader.ResolvedStackFrame">
+            <summary>
+            解析的堆栈帧
+            </summary>
+        </member>
+        <member name="T:Il2CppSymbolReader.UnityStackTraceResult">
+            <summary>
+            Unity 堆栈跟踪解析结果
+            </summary>
+        </member>
+        <member name="T:Il2CppSymbolReader.UsymReader">
+            <summary>
+            IL2CPP usym符号文件读取器
+            </summary>
+        </member>
+        <member name="M:Il2CppSymbolReader.UsymReader.#ctor(System.String)">
+            <summary>
+            从文件路径加载usym文件
+            </summary>
+            <param name="filePath">usym文件路径</param>
+        </member>
+        <member name="P:Il2CppSymbolReader.UsymReader.IsValid">
+            <summary>
+            检查符号文件是否有效
+            </summary>
+        </member>
+        <member name="P:Il2CppSymbolReader.UsymReader.Header">
+            <summary>
+            获取符号文件头信息
+            </summary>
+        </member>
+        <member name="M:Il2CppSymbolReader.UsymReader.FindSymbol(System.UInt64)">
+            <summary>
+            根据地址查找符号信息
+            </summary>
+            <param name="address">内存地址</param>
+            <returns>符号信息，如果找不到返回null</returns>
+        </member>
+        <member name="M:Il2CppSymbolReader.UsymReader.GetStackFrames(System.UInt64)">
+            <summary>
+            根据地址获取所有相关的堆栈帧信息（包括内联函数）
+            </summary>
+            <param name="address">内存地址</param>
+            <returns>堆栈帧信息列表</returns>
+        </member>
+        <member name="M:Il2CppSymbolReader.UsymReader.GetString(System.UInt32)">
+            <summary>
+            获取字符串表中的字符串
+            </summary>
+            <param name="offset">字符串偏移量</param>
+            <returns>字符串内容</returns>
+        </member>
+        <member name="M:Il2CppSymbolReader.UsymReader.GetAllSymbols">
+            <summary>
+            获取所有符号信息（调试用）
+            </summary>
+            <returns>所有符号信息</returns>
+        </member>
+        <member name="M:Il2CppSymbolReader.UsymReader.FindLine(System.UInt64)">
+            <summary>
+            二分查找指定地址对应的行
+            </summary>
+        </member>
+        <member name="M:Il2CppSymbolReader.UsymReader.InsertStackFrame(Il2CppSymbolReader.UsymLine,System.Collections.Generic.List{Il2CppSymbolReader.SymbolInfo})">
+            <summary>
+            递归插入堆栈帧（处理内联函数）
+            </summary>
+        </member>
+        <member name="T:Il2CppSymbolReader.UsymHeader">
+            <summary>
+            usym文件头结构
+            </summary>
+        </member>
+        <member name="F:Il2CppSymbolReader.UsymHeader.Magic">
+            <summary>
+            魔术数字，应为0x2D6D7973 ("sym-")
+            </summary>
+        </member>
+        <member name="F:Il2CppSymbolReader.UsymHeader.Version">
+            <summary>
+            版本号
+            </summary>
+        </member>
+        <member name="F:Il2CppSymbolReader.UsymHeader.LineCount">
+            <summary>
+            行数
+            </summary>
+        </member>
+        <member name="F:Il2CppSymbolReader.UsymHeader.Id">
+            <summary>
+            可执行文件ID，字符串表中的偏移量
+            </summary>
+        </member>
+        <member name="F:Il2CppSymbolReader.UsymHeader.Os">
+            <summary>
+            操作系统，字符串表中的偏移量
+            </summary>
+        </member>
+        <member name="F:Il2CppSymbolReader.UsymHeader.Arch">
+            <summary>
+            架构，字符串表中的偏移量
+            </summary>
+        </member>
+        <member name="T:Il2CppSymbolReader.UsymLine">
+            <summary>
+            usym文件行结构
+            </summary>
+        </member>
+        <member name="F:Il2CppSymbolReader.UsymLine.Address">
+            <summary>
+            内存地址
+            </summary>
+        </member>
+        <member name="F:Il2CppSymbolReader.UsymLine.MethodIndex">
+            <summary>
+            方法索引
+            </summary>
+        </member>
+        <member name="F:Il2CppSymbolReader.UsymLine.FileName">
+            <summary>
+            源文件名，字符串表中的偏移量
+            </summary>
+        </member>
+        <member name="F:Il2CppSymbolReader.UsymLine.Line">
+            <summary>
+            源代码行号
+            </summary>
+        </member>
+        <member name="F:Il2CppSymbolReader.UsymLine.Parent">
+            <summary>
+            父级索引
+            </summary>
+        </member>
+        <member name="T:Il2CppSymbolReader.SymbolInfo">
+            <summary>
+            符号信息结果
+            </summary>
+        </member>
+        <member name="P:Il2CppSymbolReader.SymbolInfo.FileName">
+            <summary>
+            源文件路径
+            </summary>
+        </member>
+        <member name="P:Il2CppSymbolReader.SymbolInfo.LineNumber">
+            <summary>
+            行号
+            </summary>
+        </member>
+        <member name="P:Il2CppSymbolReader.SymbolInfo.MethodIndex">
+            <summary>
+            方法索引
+            </summary>
+        </member>
+        <member name="P:Il2CppSymbolReader.SymbolInfo.Parent">
+            <summary>
+            父级信息
+            </summary>
+        </member>
+        <member name="P:Il2CppSymbolReader.SymbolInfo.Address">
+            <summary>
+            原始地址
+            </summary>
+        </member>
+    </members>
+</doc>

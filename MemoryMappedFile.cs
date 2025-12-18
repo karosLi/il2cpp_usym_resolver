@@ -1,136 +1,107 @@
-using System.Runtime.InteropServices;
-using Microsoft.Win32.SafeHandles;
+using System.IO.MemoryMappedFiles;
 
 namespace Il2CppSymbolReader;
 
 /// <summary>
-/// 简化的内存映射文件实现
+/// 跨平台内存映射文件实现（包装.NET标准库）
 /// </summary>
 public class MemoryMappedFile : IDisposable
 {
-    private readonly SafeFileHandle _fileHandle;
-    private readonly SafeMemoryMappedFileHandle _mappingHandle;
+    private readonly System.IO.MemoryMappedFiles.MemoryMappedFile _mmf;
     private readonly long _capacity;
-    
-    private MemoryMappedFile(SafeFileHandle fileHandle, SafeMemoryMappedFileHandle mappingHandle, long capacity)
+
+    private MemoryMappedFile(System.IO.MemoryMappedFiles.MemoryMappedFile mmf, long capacity)
     {
-        _fileHandle = fileHandle;
-        _mappingHandle = mappingHandle;
+        _mmf = mmf;
         _capacity = capacity;
     }
-    
+
     /// <summary>
     /// 从文件创建内存映射文件
     /// </summary>
-    public static MemoryMappedFile CreateFromFile(string path, FileMode mode, string mapName, long capacity, MemoryMappedFileAccess access)
+    public static MemoryMappedFile CreateFromFile(string path, FileMode mode, string? mapName, long capacity, MemoryMappedFileAccess access)
     {
-        var fileAccess = access switch
+        var fileInfo = new FileInfo(path);
+        if (!fileInfo.Exists && mode == FileMode.Open)
         {
-            MemoryMappedFileAccess.Read => FileAccess.Read,
-            MemoryMappedFileAccess.Write => FileAccess.Write,
-            MemoryMappedFileAccess.ReadWrite => FileAccess.ReadWrite,
-            _ => FileAccess.Read
-        };
-        
-        var fileHandle = File.OpenHandle(path, mode, fileAccess, FileShare.Read);
-        var fileLength = RandomAccess.GetLength(fileHandle);
-        
-        if (capacity == 0)
-            capacity = fileLength;
-            
-        var protection = access switch
-        {
-            MemoryMappedFileAccess.Read => 0x02, // PAGE_READONLY
-            MemoryMappedFileAccess.Write => 0x04, // PAGE_READWRITE
-            MemoryMappedFileAccess.ReadWrite => 0x04, // PAGE_READWRITE
-            _ => 0x02
-        };
-        
-        var mappingHandle = CreateFileMapping(fileHandle, IntPtr.Zero, (uint)protection, 0, 0, mapName);
-        if (mappingHandle.IsInvalid)
-        {
-            fileHandle.Dispose();
-            throw new InvalidOperationException("Failed to create file mapping");
+            throw new FileNotFoundException("File not found", path);
         }
-        
-        return new MemoryMappedFile(fileHandle, mappingHandle, capacity);
+
+        var fileLength = fileInfo.Exists ? fileInfo.Length : 0;
+        if (capacity == 0 && fileLength > 0)
+        {
+            capacity = fileLength;
+        }
+        else if (capacity == 0)
+        {
+            capacity = 1024; // 默认大小
+        }
+
+        var mmfAccess = access switch
+        {
+            MemoryMappedFileAccess.Read => System.IO.MemoryMappedFiles.MemoryMappedFileAccess.Read,
+            MemoryMappedFileAccess.Write => System.IO.MemoryMappedFiles.MemoryMappedFileAccess.Write,
+            MemoryMappedFileAccess.ReadWrite => System.IO.MemoryMappedFiles.MemoryMappedFileAccess.ReadWrite,
+            _ => System.IO.MemoryMappedFiles.MemoryMappedFileAccess.Read
+        };
+
+        System.IO.MemoryMappedFiles.MemoryMappedFile mmf;
+
+        if (mode == FileMode.Open && fileInfo.Exists)
+        {
+            // 打开现有文件
+            mmf = System.IO.MemoryMappedFiles.MemoryMappedFile.CreateFromFile(
+                path,
+                mode,
+                mapName,
+                capacity,
+                mmfAccess);
+        }
+        else
+        {
+            // 创建新文件或打开现有文件
+            using var fs = new FileStream(path, mode,
+                access == MemoryMappedFileAccess.Read ? FileAccess.Read : FileAccess.ReadWrite,
+                FileShare.Read);
+
+            mmf = System.IO.MemoryMappedFiles.MemoryMappedFile.CreateFromFile(
+                fs,
+                mapName,
+                capacity,
+                mmfAccess,
+                HandleInheritability.None,
+                leaveOpen: false);
+        }
+
+        return new MemoryMappedFile(mmf, capacity);
     }
-    
+
     /// <summary>
     /// 创建视图访问器
     /// </summary>
     public MemoryMappedViewAccessor CreateViewAccessor(long offset, long size, MemoryMappedFileAccess access)
     {
         if (size == 0)
+        {
             size = _capacity - offset;
-            
-        var desiredAccess = access switch
-        {
-            MemoryMappedFileAccess.Read => 0x0004, // FILE_MAP_READ
-            MemoryMappedFileAccess.Write => 0x0002, // FILE_MAP_WRITE
-            MemoryMappedFileAccess.ReadWrite => 0x0006, // FILE_MAP_READ | FILE_MAP_WRITE
-            _ => 0x0004
-        };
-        
-        var ptr = MapViewOfFile(_mappingHandle, (uint)desiredAccess, (uint)(offset >> 32), (uint)offset, (UIntPtr)size);
-        if (ptr == IntPtr.Zero)
-        {
-            throw new InvalidOperationException("Failed to map view of file");
         }
-        
-        return new MemoryMappedViewAccessor(ptr, size);
+
+        var mmfAccess = access switch
+        {
+            MemoryMappedFileAccess.Read => System.IO.MemoryMappedFiles.MemoryMappedFileAccess.Read,
+            MemoryMappedFileAccess.Write => System.IO.MemoryMappedFiles.MemoryMappedFileAccess.Write,
+            MemoryMappedFileAccess.ReadWrite => System.IO.MemoryMappedFiles.MemoryMappedFileAccess.ReadWrite,
+            _ => System.IO.MemoryMappedFiles.MemoryMappedFileAccess.Read
+        };
+
+        var accessor = _mmf.CreateViewAccessor(offset, size, mmfAccess);
+        return new MemoryMappedViewAccessor(accessor);
     }
-    
+
     public void Dispose()
     {
-        _mappingHandle?.Dispose();
-        _fileHandle?.Dispose();
+        _mmf?.Dispose();
     }
-    
-    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-    private static extern SafeMemoryMappedFileHandle CreateFileMapping(
-        SafeFileHandle hFile,
-        IntPtr lpFileMappingAttributes,
-        uint flProtect,
-        uint dwMaximumSizeHigh,
-        uint dwMaximumSizeLow,
-        string? lpName);
-        
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern IntPtr MapViewOfFile(
-        SafeMemoryMappedFileHandle hFileMappingObject,
-        uint dwDesiredAccess,
-        uint dwFileOffsetHigh,
-        uint dwFileOffsetLow,
-        UIntPtr dwNumberOfBytesToMap);
-        
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool UnmapViewOfFile(IntPtr lpBaseAddress);
-}
-
-/// <summary>
-/// 安全的内存映射文件句柄
-/// </summary>
-public class SafeMemoryMappedFileHandle : SafeHandleZeroOrMinusOneIsInvalid
-{
-    public SafeMemoryMappedFileHandle() : base(true) { }
-    
-    protected override bool ReleaseHandle()
-    {
-        return CloseHandle(handle);
-    }
-    
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool CloseHandle(IntPtr hObject);
-    
-    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-    internal static extern SafeMemoryMappedFileHandle CreateFileMapping(
-        SafeFileHandle hFile,
-        IntPtr lpFileMappingAttributes,
-        uint flProtect,
-        uint dwMaximumSizeHigh,
-        uint dwMaximumSizeLow,
-        string? lpName);
 }
 
 /// <summary>
@@ -144,58 +115,34 @@ public enum MemoryMappedFileAccess
 }
 
 /// <summary>
-/// 内存映射视图访问器
+/// 内存映射视图访问器（包装.NET标准库）
 /// </summary>
 public class MemoryMappedViewAccessor : IDisposable
 {
-    private readonly IntPtr _baseAddress;
-    private readonly long _capacity;
+    private readonly System.IO.MemoryMappedFiles.MemoryMappedViewAccessor _accessor;
     private bool _disposed;
-    
-    internal MemoryMappedViewAccessor(IntPtr baseAddress, long capacity)
+
+    internal MemoryMappedViewAccessor(System.IO.MemoryMappedFiles.MemoryMappedViewAccessor accessor)
     {
-        _baseAddress = baseAddress;
-        _capacity = capacity;
+        _accessor = accessor;
     }
-    
-    public long Capacity => _capacity;
-    
+
+    public long Capacity => _accessor.Capacity;
+
     public void ReadArray<T>(long position, T[] array, int offset, int count) where T : struct
     {
         if (_disposed)
             throw new ObjectDisposedException(nameof(MemoryMappedViewAccessor));
-            
-        var elementSize = Marshal.SizeOf<T>();
-        var totalBytes = count * elementSize;
-        
-        if (position + totalBytes > _capacity)
-            throw new ArgumentOutOfRangeException(nameof(position));
-            
-        unsafe
-        {
-            var src = (byte*)_baseAddress + position;
-            var handle = GCHandle.Alloc(array, GCHandleType.Pinned);
-            try
-            {
-                var dst = (byte*)handle.AddrOfPinnedObject() + (offset * elementSize);
-                Buffer.MemoryCopy(src, dst, totalBytes, totalBytes);
-            }
-            finally
-            {
-                handle.Free();
-            }
-        }
+
+        _accessor.ReadArray(position, array, offset, count);
     }
-    
+
     public void Dispose()
     {
         if (!_disposed)
         {
-            UnmapViewOfFile(_baseAddress);
+            _accessor?.Dispose();
             _disposed = true;
         }
     }
-    
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool UnmapViewOfFile(IntPtr lpBaseAddress);
 }
